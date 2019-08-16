@@ -84,10 +84,6 @@
       "name": "[parameters('applicationGatewayName')]",
       "location": "[resourceGroup().location]",
       "properties": {
-        "copy": {
-          "name": "gwconfig",
-          "count": "[]"
-        }
         "sku": {
           "name": "Standard_v2",
           "tier": "Standard_v2"
