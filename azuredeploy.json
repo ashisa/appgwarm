@@ -1,0 +1,447 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "applicationGatewayName": {
+      "type": "string"
+    },
+    "vnet_Name": {
+      "type": "string"
+    },
+    "subnetName": {
+      "type": "string"
+    },
+    "publicIPAddressName": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "vnetId": "[resourceId('Microsoft.Network/virtulNetworks', parameters('vnet_Name'))]",
+    "publicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses/', parameters('publicIpAddressName'))]",
+    "subnet1Ref": "[resourceId(resourceGroup().Name, 'Microsoft.Network/virtualNetworks/subnets', parameters('vnet_Name'), parameters('subnetName'))]",
+    "applicationGatewayId": "[resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName'))]",
+    "http": {
+      "name": "http",
+      "port": 80,
+      "fe_port_name": "http_port",
+      "setting_name": "http_setting",
+      "listener": "http_listener",
+      "url_path_map": "http_path_map",
+      "rule": "http_rule",
+      "probe_name": "http_probe",
+      "probe_path": "/"
+    },
+    "ems": {
+      "name": "ems",
+      "port": 3021,
+      "fe_port_name": "ems_port",
+      "setting_name": "ems_setting",
+      "listener": "ems_listener",
+      "url_path_map": "ems_path_map",
+      "rule": "ems_rule",
+      "probe_name": "ems_probe",
+      "probe_path": "/"
+    },
+    "booking": {
+      "name": "booking",
+      "port": 3121,
+      "fe_port_name": "booking_port",
+      "setting_name": "booking_setting",
+      "listener": "booking_listener",
+      "url_path_map": "booking_path_map",
+      "rule": "booking_rule",
+      "probe_name": "booking_probe",
+      "probe_path": "/"
+    },
+    "cns": {
+      "name": "cns",
+      "port": 5520,
+      "fe_port_name": "cns_port",
+      "setting_name": "cns_setting",
+      "listener": "cns_listener",
+      "url_path_map": "cns_path_map",
+      "rule": "cns_rule",
+      "probe_name": "cns_probe",
+      "probe_path": "/"
+    }
+  },
+  "resources": [
+    {
+      "apiVersion": "2019-02-01",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[parameters('publicIpAddressName')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {
+      "type": "Microsoft.Network/applicationGateways",
+      "apiVersion": "2019-06-01",
+      "name": "[parameters('applicationGatewayName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "copy": {
+          "name": "gwconfig",
+          "count": "[]"
+        }
+        "sku": {
+          "name": "Standard_v2",
+          "tier": "Standard_v2"
+        },
+        "gatewayIPConfigurations": [
+          {
+            "name": "appGatewayIpConfig",
+            "properties": {
+              "subnet": {
+                "id": "[variables('subnet1Ref')]"
+              }
+            }
+          }
+        ],
+        "sslCertificates": [],
+        "trustedRootCertificates": [],
+        "frontendIPConfigurations": [
+          {
+            "name": "appGwPublicFrontendIp",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[variables('publicIPRef')]"
+              }
+            }
+          }
+        ],
+        "frontendPorts": [
+          {
+            "name": "[variables('http').fe_port_name]",
+            "properties": {
+              "port": "[variables('http').port]"
+            }
+          },
+          {
+            "name": "[variables('ems').fe_port_name]",
+            "properties": {
+              "port": "[variables('ems').port]"
+            }
+          },
+          {
+            "name": "[variables('booking').fe_port_name]",
+            "properties": {
+              "port": "[variables('booking').port]"
+            }
+          },
+          {
+            "name": "[variables('cns').fe_port_name]",
+            "properties": {
+              "port": "[variables('cns').port]"
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "bepool",
+            "properties": {
+              "backendAddresses": []
+            }
+          }
+        ],
+        "backendHttpSettingsCollection": [
+          {
+            "name": "[variables('http').setting_name]",
+            "properties": {
+              "port": "[variables('http').port]",
+              "protocol": "Http",
+              "cookieBasedAffinity": "Disabled",
+              "pickHostNameFromBackendAddress": false,
+              "requestTimeout": 30
+            }
+          },
+          {
+            "name": "[variables('ems').setting_name]",
+            "properties": {
+              "port": "[variables('ems').port]",
+              "protocol": "Http",
+              "cookieBasedAffinity": "Disabled",
+              "pickHostNameFromBackendAddress": false,
+              "requestTimeout": 30
+            }
+          },
+          {
+            "name": "[variables('booking').setting_name]",
+            "properties": {
+              "port": "[variables('booking').port]",
+              "protocol": "Http",
+              "cookieBasedAffinity": "Disabled",
+              "pickHostNameFromBackendAddress": false,
+              "requestTimeout": 30
+            }
+          },
+          {
+            "name": "[variables('cns').setting_name]",
+            "properties": {
+              "port": "[variables('cns').port]",
+              "protocol": "Http",
+              "cookieBasedAffinity": "Disabled",
+              "pickHostNameFromBackendAddress": false,
+              "requestTimeout": 30
+            }
+          }
+        ],
+        "httpListeners": [
+          {
+            "name": "[variables('http').listener]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendIPConfigurations/appGwPublicFrontendIp')]"
+              },
+              "frontendPort": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendPorts/', variables('http').fe_port_name)]"
+              },
+              "protocol": "Http",
+              "requireServerNameIndication": false
+            }
+          },
+          {
+            "name": "[variables('ems').listener]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendIPConfigurations/appGwPublicFrontendIp')]"
+              },
+              "frontendPort": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendPorts/', variables('ems').fe_port_name)]"
+              },
+              "protocol": "Http",
+              "requireServerNameIndication": false
+            }
+          },
+          {
+            "name": "[variables('booking').listener]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendIPConfigurations/appGwPublicFrontendIp')]"
+              },
+              "frontendPort": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendPorts/', variables('booking').fe_port_name)]"
+              },
+              "protocol": "Http",
+              "requireServerNameIndication": false
+            }
+          },
+          {
+            "name": "[variables('cns').listener]",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendIPConfigurations/appGwPublicFrontendIp')]"
+              },
+              "frontendPort": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendPorts/', variables('cns').fe_port_name)]"
+              },
+              "protocol": "Http",
+              "requireServerNameIndication": false
+            }
+          }
+        ],
+        "urlPathMaps": [
+          {
+            "name": "[variables('ems').url_path_map]",
+            "properties": {
+              "defaultBackendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
+              },
+              "defaultBackendHttpSettings": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', variables('ems').setting_name)]"
+              },
+              "pathRules": [
+                {
+                  "name": "[variables('ems').rule]",
+                  "properties": {
+                    "paths": [
+                      "[concat('/',variables('ems').name ,'/*')]"
+                    ],
+                    "backendAddressPool": {
+                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
+                    },
+                    "backendHttpSettings": {
+                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', variables('ems').setting_name)]"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "[variables('booking').url_path_map]",
+            "properties": {
+              "defaultBackendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
+              },
+              "defaultBackendHttpSettings": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', variables('booking').setting_name)]"
+              },
+              "pathRules": [
+                {
+                  "name": "[variables('booking').rule]",
+                  "properties": {
+                    "paths": [
+                      "[concat('/',variables('booking').name ,'/*')]"
+                    ],
+                    "backendAddressPool": {
+                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
+                    },
+                    "backendHttpSettings": {
+                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', variables('booking').setting_name)]"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "[variables('cns').url_path_map]",
+            "properties": {
+              "defaultBackendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
+              },
+              "defaultBackendHttpSettings": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', variables('cns').setting_name)]"
+              },
+              "pathRules": [
+                {
+                  "name": "[variables('cns').rule]",
+                  "properties": {
+                    "paths": [
+                      "[concat('/',variables('cns').name ,'/*')]"
+                    ],
+                    "backendAddressPool": {
+                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
+                    },
+                    "backendHttpSettings": {
+                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', variables('cns').setting_name)]"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "requestRoutingRules": [
+          {
+            "name": "[variables('http').rule]",
+            "properties": {
+              "ruleType": "Basic",
+              "httpListener": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/httpListeners/', variables('http').listener)]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
+              },
+              "backendHttpSettings": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', variables('http').setting_name)]"
+              }
+            }
+          },
+          {
+            "name": "[variables('ems').rule]",
+            "properties": {
+              "ruleType": "PathBasedRouting",
+              "httpListener": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/httpListeners/', variables('ems').listener)]"
+              },
+              "urlPathMap": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/urlPathMaps/', variables('ems').url_path_map)]"
+              }
+            }
+          },
+          {
+            "name": "[variables('booking').rule]",
+            "properties": {
+              "ruleType": "PathBasedRouting",
+              "httpListener": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/httpListeners/', variables('booking').listener)]"
+              },
+              "urlPathMap": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/urlPathMaps/', variables('booking').url_path_map)]"
+              }
+            }
+          },
+          {
+            "name": "[variables('cns').rule]",
+            "properties": {
+              "ruleType": "PathBasedRouting",
+              "httpListener": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/httpListeners/', variables('cns').listener)]"
+              },
+              "urlPathMap": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/urlPathMaps/', variables('cns').url_path_map)]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "[variables('ems').probe_name]",
+            "properties": {
+              "protocol": "Http",
+              "path": "[variables('ems').probe_path]",
+              "interval": 30,
+              "timeout": 30,
+              "unhealthyThreshold": 3,
+              "pickHostNameFromBackendHttpSettings": true,
+              "minServers": 0,
+              "match": {
+                "statusCodes": [
+                  "200-399"
+                ]
+              }
+            }
+          },
+          {
+            "name": "[variables('booking').probe_name]",
+            "properties": {
+              "protocol": "Http",
+              "path": "[variables('booking').probe_path]",
+              "interval": 30,
+              "timeout": 30,
+              "unhealthyThreshold": 3,
+              "pickHostNameFromBackendHttpSettings": true,
+              "minServers": 0,
+              "match": {
+                "statusCodes": [
+                  "200-399"
+                ]
+              }
+            }
+          },
+          {
+            "name": "[variables('cns').probe_name]",
+            "properties": {
+              "protocol": "Http",
+              "path": "[variables('cns').probe_path]",
+              "interval": 30,
+              "timeout": 30,
+              "unhealthyThreshold": 3,
+              "pickHostNameFromBackendHttpSettings": true,
+              "minServers": 0,
+              "match": {
+                "statusCodes": [
+                  "200-399"
+                ]
+              }
+            }
+          }
+        ],
+        "rewriteRuleSets": [],
+        "redirectConfigurations": [],
+        "enableHttp2": false,
+        "autoscaleConfiguration": {
+          "minCapacity": 2,
+          "maxCapacity": 5
+        }
+      }
+    }
+  ]
+}
