@@ -98,7 +98,15 @@
             }
           }
         ],
-        "sslCertificates": [],
+        "sslCertificates": [
+          {
+            "name": "appGatewayFrontEndSslCert",
+            "properties": {
+              "data": "Base-64 encoded form of the .pfx file. This is the cert terminating on the Application Gateway.",
+              "password": "Password for .pfx certificate"
+            }
+          }
+        ],
         "trustedRootCertificates": [],
         "frontendIPConfigurations": [
           {
