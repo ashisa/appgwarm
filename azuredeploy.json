@@ -111,7 +111,9 @@
             },
             "copy": {
                 "name": "appgwloop",
-                "count": "[length(variables('rule'))]"
+                "count": "[length(variables('rule'))]",
+                "mode": "serial",
+                "batchSize": 1
             }
         }
     ]
