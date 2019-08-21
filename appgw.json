@@ -1,206 +1,90 @@
-﻿{
+{
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
     "applicationGatewayName": {
       "type": "string"
     },
-    "publicIpAddressName": {
+    "vnet_Name": {
       "type": "string"
     },
-    "subnet1Ref": {
+    "subnetName": {
       "type": "string"
     },
-    "publicIPRef": {
-      "type": "string"
-    },
-    "fe_port_name": {
-      "type": "string"
-    },
-    "fe_port": {
-      "type": "string"
-    },
-    "setting_name": {
-      "type": "string"
-    },
-    "listener_name": {
-      "type": "string"
-    },
-    "url_path_map": {
-      "type": "string"
-    },
-    "rule_name": {
-      "type": "string"
-    },
-    "name": {
-      "type": "string"
-    },
-    "probe_name": {
-      "type": "string"
-    },
-    "probe_path": {
+    "publicIPAddressName": {
       "type": "string"
     }
   },
   "variables": {
+    "vnetId": "[resourceId('Microsoft.Network/virtulNetworks', parameters('vnet_Name'))]",
+    "publicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses/', parameters('publicIpAddressName'))]",
+    "subnet1Ref": "[resourceId(resourceGroup().Name, 'Microsoft.Network/virtualNetworks/subnets', parameters('vnet_Name'), parameters('subnetName'))]",
+    "applicationGatewayId": "[resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName'))]",
+    "rule": [
+      {
+        "name": "ems",
+        "port": 3021,
+        "fe_port_name": "ems_port",
+        "setting_name": "ems_setting",
+        "listener_name": "ems_listener",
+        "url_path_map": "ems_path_map",
+        "rule_name": "ems_rule",
+        "probe_name": "ems_probe",
+        "probe_path": "/"
+      },
+      {
+        "name": "booking",
+        "port": 3121,
+        "fe_port_name": "booking_port",
+        "setting_name": "booking_setting",
+        "listener_name": "booking_listener",
+        "url_path_map": "booking_path_map",
+        "rule_name": "booking_rule",
+        "probe_name": "booking_probe",
+        "probe_path": "/"
+      },
+      {
+        "name": "cns",
+        "port": 5520,
+        "fe_port_name": "cns_port",
+        "setting_name": "cns_setting",
+        "listener_name": "cns_listener",
+        "url_path_map": "cns_path_map",
+        "rule_name": "cns_rule",
+        "probe_name": "cns_probe",
+        "probe_path": "/"
+      }
+    ]
   },
   "resources": [
     {
-      "apiVersion": "2019-02-01",
-      "type": "Microsoft.Network/publicIPAddresses",
-      "name": "[parameters('publicIpAddressName')]",
-      "location": "[resourceGroup().location]",
-      "sku": {
-        "name": "Standard"
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "[concat(variables('rule')[copyIndex()].name, variables('rule')[copyIndex()])]",
+      "copy": {
+        "name": "appgwloop",
+        "count": "[length(variables('rule'))]"
       },
       "properties": {
-        "publicIPAllocationMethod": "Static"
-      }
-    },
-    {
-      "type": "Microsoft.Network/applicationGateways",
-      "apiVersion": "2019-06-01",
-      "name": "[parameters('applicationGatewayName')]",
-      "location": "[resourceGroup().location]",
-      "properties": {
-        "sku": {
-          "name": "Standard_v2",
-          "tier": "Standard_v2"
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "https://raw.githubusercontent.com/ashisa/appgwarm/master/appgw.json",
+          "contentVersion": "1.0.0.0"
         },
-        "gatewayIPConfigurations": [
-          {
-            "name": "appGatewayIpConfig",
-            "properties": {
-              "subnet": {
-                "id": "[parameters('subnet1Ref')]"
-              }
-            }
-          }
-        ],
-        "sslCertificates": [],
-        "trustedRootCertificates": [],
-        "frontendIPConfigurations": [
-          {
-            "name": "appGwPublicFrontendIp",
-            "properties": {
-              "privateIPAllocationMethod": "Dynamic",
-              "publicIPAddress": {
-                "id": "[parameters('publicIPRef')]"
-              }
-            }
-          }
-        ],
-        "frontendPorts": [
-          {
-            "name": "[parameters('fe_port_name')]",
-            "properties": {
-              "port": "[parameters('fe_port')]"
-            }
-          }
-        ],
-        "backendAddressPools": [
-          {
-            "name": "bepool",
-            "properties": {
-              "backendAddresses": []
-            }
-          }
-        ],
-        "backendHttpSettingsCollection": [
-          {
-            "name": "[parameters('setting_name')]",
-            "properties": {
-              "port": "[parameters('fe_port')]",
-              "protocol": "Http",
-              "cookieBasedAffinity": "Disabled",
-              "pickHostNameFromBackendAddress": false,
-              "requestTimeout": 30
-            }
-          }
-        ],
-        "httpListeners": [
-          {
-            "name": "[parameters('listener_name')]",
-            "properties": {
-              "frontendIPConfiguration": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendIPConfigurations/appGwPublicFrontendIp')]"
-              },
-              "frontendPort": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendPorts/', parameters('fe_port_name'))]"
-              },
-              "protocol": "Http",
-              "requireServerNameIndication": false
-            }
-          }
-        ],
-        "urlPathMaps": [
-          {
-            "name": "[parameters('url_path_map')]",
-            "properties": {
-              "defaultBackendAddressPool": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
-              },
-              "defaultBackendHttpSettings": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', parameters('setting_name'))]"
-              },
-              "pathRules": [
-                {
-                  "name": "[parameters('rule_name')]",
-                  "properties": {
-                    "paths": [
-                      "[concat('/',parameters('name'),'/*')]"
-                    ],
-                    "backendAddressPool": {
-                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/bepool')]"
-                    },
-                    "backendHttpSettings": {
-                      "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/', parameters('setting_name'))]"
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        ],
-        "requestRoutingRules": [
-          {
-            "name": "[parameters('rule_name')]",
-            "properties": {
-              "ruleType": "PathBasedRouting",
-              "httpListener": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/httpListeners/', parameters('listener_name'))]"
-              },
-              "urlPathMap": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/urlPathMaps/', parameters('url_path_map'))]"
-              }
-            }
-          }
-        ],
-        "probes": [
-          {
-            "name": "[parameters('probe_name')]",
-            "properties": {
-              "protocol": "Http",
-              "path": "[parameters('probe_path')]",
-              "interval": 30,
-              "timeout": 30,
-              "unhealthyThreshold": 3,
-              "pickHostNameFromBackendHttpSettings": true,
-              "minServers": 0,
-              "match": {
-                "statusCodes": [
-                  "200-399"
-                ]
-              }
-            }
-          }
-        ],
-        "rewriteRuleSets": [],
-        "redirectConfigurations": [],
-        "enableHttp2": false,
-        "autoscaleConfiguration": {
-          "minCapacity": 2,
-          "maxCapacity": 5
+        "parameters": {
+          "applicationGatewayName": { "value": "[parameters('applicationGatewayName')]" },
+          "publicIpAddressName": { "value": "[parameters('publicIpAddressName')]" },
+          "subnet1Ref": { "value": "[variables('subnet1Ref')]" },
+          "publicIPRef": { "value": "[variables('publicIPRef')]" },
+          "fe_port_name": { "value": "[variables('rule')[copyIndex()].fe_port_name]" },
+          "fe_port": { "value": "[variables('rule')[copyIndex()].fe_port]" },
+          "setting_name": { "value": "[variables('rule')[copyIndex()].setting_name]" },
+          "listener_name": { "value": "[variables('rule')[copyIndex()].listener_name]" },
+          "url_path_map": { "value": "[variables('rule')[copyIndex()].url_path_map]" },
+          "rule_name": { "value": "[variables('rule')[copyIndex()].rule_name]" },
+          "probe_name": { "value": "[variables('rule')[copyIndex()].probe_name]" },
+          "name": { "value": "[variables('rule')[copyIndex()].name]" },
+          "probe_path": { "value": "[variables('rule')[copyIndex()].probe_path]" }
         }
       }
     }
