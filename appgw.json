@@ -18,7 +18,7 @@
       "type": "string"
     },
     "fe_port": {
-      "type": "string"
+      "type": "integer"
     },
     "setting_name": {
       "type": "string"
