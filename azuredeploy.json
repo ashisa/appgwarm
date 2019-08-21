@@ -1,0 +1,118 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "applicationGatewayName": {
+            "type": "String"
+        },
+        "vnet_Name": {
+            "type": "String"
+        },
+        "subnetName": {
+            "type": "String"
+        },
+        "publicIPAddressName": {
+            "type": "String"
+        }
+    },
+    "variables": {
+        "vnetId": "[resourceId('Microsoft.Network/virtulNetworks', parameters('vnet_Name'))]",
+        "publicIPRef": "[resourceId('Microsoft.Network/publicIPAddresses/', parameters('publicIpAddressName'))]",
+        "subnet1Ref": "[resourceId(resourceGroup().Name, 'Microsoft.Network/virtualNetworks/subnets', parameters('vnet_Name'), parameters('subnetName'))]",
+        "applicationGatewayId": "[resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName'))]",
+        "rule": [
+            {
+                "name": "ems",
+                "fe_port": 3021,
+                "fe_port_name": "ems_port",
+                "setting_name": "ems_setting",
+                "listener_name": "ems_listener",
+                "url_path_map": "ems_path_map",
+                "rule_name": "ems_rule",
+                "probe_name": "ems_probe",
+                "probe_path": "/"
+            },
+            {
+                "name": "booking",
+                "fe_port": 3121,
+                "fe_port_name": "booking_port",
+                "setting_name": "booking_setting",
+                "listener_name": "booking_listener",
+                "url_path_map": "booking_path_map",
+                "rule_name": "booking_rule",
+                "probe_name": "booking_probe",
+                "probe_path": "/"
+            },
+            {
+                "name": "cns",
+                "fe_port": 5520,
+                "fe_port_name": "cns_port",
+                "setting_name": "cns_setting",
+                "listener_name": "cns_listener",
+                "url_path_map": "cns_path_map",
+                "rule_name": "cns_rule",
+                "probe_name": "cns_probe",
+                "probe_path": "/"
+            }
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-05-01",
+            "name": "[concat(variables('rule')[copyIndex()].name, 'appgw')]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "https://raw.githubusercontent.com/ashisa/appgwarm/master/appgw.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "applicationGatewayName": {
+                        "value": "[parameters('applicationGatewayName')]"
+                    },
+                    "publicIpAddressName": {
+                        "value": "[parameters('publicIpAddressName')]"
+                    },
+                    "subnet1Ref": {
+                        "value": "[variables('subnet1Ref')]"
+                    },
+                    "publicIPRef": {
+                        "value": "[variables('publicIPRef')]"
+                    },
+                    "fe_port_name": {
+                        "value": "[variables('rule')[copyIndex()].fe_port_name]"
+                    },
+                  "fe_port": {
+                    "value": "[variables('rule')[copyIndex()].fe_port]"
+                  },
+                    "setting_name": {
+                        "value": "[variables('rule')[copyIndex()].setting_name]"
+                    },
+                    "listener_name": {
+                        "value": "[variables('rule')[copyIndex()].listener_name]"
+                    },
+                    "url_path_map": {
+                        "value": "[variables('rule')[copyIndex()].url_path_map]"
+                    },
+                    "rule_name": {
+                        "value": "[variables('rule')[copyIndex()].rule_name]"
+                    },
+                    "probe_name": {
+                        "value": "[variables('rule')[copyIndex()].probe_name]"
+                    },
+                    "name": {
+                        "value": "[variables('rule')[copyIndex()].name]"
+                    },
+                    "probe_path": {
+                        "value": "[variables('rule')[copyIndex()].probe_path]"
+                    }
+                }
+            },
+            "copy": {
+                "name": "appgwloop",
+                "count": "[length(variables('rule'))]"
+            }
+        }
+    ]
+}
