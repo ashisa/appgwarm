@@ -53,6 +53,17 @@
                 "rule_name": "cns_rule",
                 "probe_name": "cns_probe",
                 "probe_path": "/"
+            },
+            {
+                "name": "emergency",
+                "fe_port": 4021,
+                "fe_port_name": "emergency_port",
+                "setting_name": "emergency_setting",
+                "listener_name": "emergency_listener",
+                "url_path_map": "emergency_path_map",
+                "rule_name": "emergency_rule",
+                "probe_name": "emergency_probe",
+                "probe_path": "/"
             }
         ]
     },
